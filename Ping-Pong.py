@@ -4,29 +4,29 @@ from time import time as timer
 mixer.init()
 font.init()
 
+# Now create bot point selection
+Y_select = None
+# Load music
+mixer.music.load('Flames of war.mp3')
+mixer.music.play(-1)
+new_round = mixer.Sound('new_round.ogg')
+start_game = mixer.Sound('start_game.ogg')
+# Also
+window = display.set_mode((900, 700))
+display.set_caption('Ping-Pong')
 # Create Constants
 TOP = 0
 BOTTOM = 650
 LEFT = 0
 RIGHT = 850
-# Now create bot point selection
-Y_select = None
-
-# Load music
-mixer.music.load('Flames of war.mp3')
-new_round = mixer.Sound('new_round.ogg')
-# mixer.music.play(-1)
-
-# Also
-window = display.set_mode((900, 700))
-display.set_caption('Ping-Pong')
-
+CENTERX = int(str(window)[9:str(window).find('x')]) / 2.1
+CENTERY = int(str(window)[str(window).find('x')+1:-8]) / 2.1
 # Create Base and Special font
-base_font = font.SysFont('Arial', 60)
+base_font = font.SysFont('Arial', 80)
 special_font = font.SysFont('Arial', 30)
 # Select background for menu and game
 menu_fon = transform.scale(image.load('background'+choice(['1','2','3'])+'.jpg'), (900, 700))
-background = transform.scale(image.load('background.png'), (900, 700))
+background = transform.scale(image.load('background.jpg'), (900, 700))
 # Create classes and functions
 def return_to_start(p_left, p_right, ball):
     start_timer = timer()
@@ -102,7 +102,6 @@ class Ball(sprite.Sprite):
                 self.speed_y *= -1
             if abs(self.rect.top - player_left.rect.bottom) <= 10: # if Ball top collide Player bottom
                 self.speed_y *= -1
-            # self.speed_y *= choice([0.5, 0.75, 2])
             self.speed_y = round(self.speed_y, 2)
             self.speed_x *= -1
         if sprite.collide_rect(self, player_right):
@@ -120,7 +119,6 @@ class Bot(GameSprite):
                 while select_y < BOTTOM and select_x < RIGHT:
                     select_y += ball.speed_y
                     select_x += ball.speed_x
-                
             elif ball.speed_y < 0:
                 select_x = ball.rect.x
                 select_y = ball.rect.y
@@ -135,10 +133,10 @@ class Bot(GameSprite):
                 Y_select = select_y
 
     def bot_move(self):
-        random = choice([2,2,2,3])
-        if self.rect.y < BOTTOM - (self.height - 50) and Y_select > self.rect.bottom - 50*(random): # We make sure that the bot makes mistakes in calculations from time to time, and gives the player a chance
+        random = choice([1,1,1,1,10])
+        if self.rect.y < BOTTOM - (self.height - 50) and Y_select > self.rect.centery *(random): # We make sure that the bot makes mistakes in calculations from time to time, and gives the player a chance
             self.rect.y += self.speed            
-        if self.rect.y > 0 and Y_select < self.rect.top + 50*(random):
+        if self.rect.y > 0 and Y_select < self.rect.centery *(random):
             self.rect.y -= self.speed
 class Button(GameSprite):
     def collidepoint(self, x, y):
@@ -153,7 +151,7 @@ procces = True
 clock = time.Clock()
 while menu:
     window.blit(menu_fon, (0,0))
-    window.blit(base_font.render(f'Ping-Pong', True, (0, 0, 0)), (350, 100))
+    window.blit(base_font.render(f'Ping-Pong', True, (0, 0, 0)), (300, 90))
     for e in event.get():
         if e.type == QUIT:
             menu = False
@@ -162,13 +160,19 @@ while menu:
             x, y = e.pos
             if player_player.collidepoint(x, y):
                 menu = False
-                player_right = PlayerRight('bot.png', 760, 250, 180, 180, 7)
+                player_right = PlayerRight('player_right.png', 800, 250, 100, 180, 7)
             if player_bot.collidepoint(x, y):
                 menu = False
-                player_right = Bot('ball.png', 760, 250, 180, 180, 7)
-            # Now create counters for points
+                player_right = Bot('player_right.png', 800, 250, 100, 180, 7)
+            # Now create counters for points and timer before the game
             try:
                 player_right.counter = 0
+                # Same timer
+                start_timer = timer()
+                end_timer = timer()
+                start_game.play()
+                while end_timer - start_timer < 3:
+                    end_timer = timer()
             except NameError:
                 pass
     player_player.reset()
@@ -176,12 +180,11 @@ while menu:
     clock.tick(60)
     display.update()
 
-player_left = PlayerLeft('bot.png', 0, 250, 180, 180, 7)
+player_left = PlayerLeft('player_left.png', 0, 250, 100, 180, 7)
 player_left.counter = 0
 ball = Ball('ball.png', 50, 50, 5, 4)
 
 while procces:
-
     for e in event.get():
         if e.type == QUIT:
             procces = False
@@ -189,7 +192,6 @@ while procces:
     # Show counters for every player
     window.blit(special_font.render(f'Player: {player_left.counter}', True, (0, 0, 0)), (20, 20))
     window.blit(special_font.render(f'Player: {player_right.counter}', True, (0, 0, 0)), (790, 20))
-
     player_left.reset()
     player_left.update()
     ball.reset()
@@ -200,6 +202,20 @@ while procces:
     except AttributeError: # We move differently if the player
         player_right.update()
     player_right.reset()
+    if player_left.counter >= 1:
+        start_timer = timer()
+        end_timer = timer()
+        # win_sound.play()
+        window.blit(base_font.render(f'Player Left Win!', True, (255, 0, 0)), (100, CENTERY))
+        while end_timer - start_timer < 3:
+            end_timer = timer()
+    if player_right.counter >= 1:
+        start_timer = timer()
+        end_timer = timer()
+        # lose_win.play()
+        window.blit(base_font.render(f'Player Right Win!', True, (0, 0, 255)), (100, CENTERY))
+        while end_timer - start_timer < 3:
+            end_timer = timer()
     clock.tick(60)
     display.update()
 
