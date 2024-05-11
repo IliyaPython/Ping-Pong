@@ -1,6 +1,8 @@
 from pygame import *
 from random import choice
+from time import time as timer
 mixer.init()
+font.init()
 
 # Create Constants
 TOP = 0
@@ -12,13 +14,31 @@ Y_select = None
 
 # Load music
 mixer.music.load('Flames of war.mp3')
-mixer.music.play(-1)
+new_round = mixer.Sound('new_round.ogg')
+# mixer.music.play(-1)
 
 # Also
 window = display.set_mode((900, 700))
 display.set_caption('Ping-Pong')
 
+# Create Base and Special font
+base_font = font.SysFont('Arial', 60)
+special_font = font.SysFont('Arial', 30)
+# Select background for menu and game
+menu_fon = transform.scale(image.load('background'+choice(['1','2','3'])+'.jpg'), (900, 700))
 background = transform.scale(image.load('background.png'), (900, 700))
+# Create classes and functions
+def return_to_start(p_left, p_right, ball):
+    start_timer = timer()
+    end_timer = timer()
+    new_round.play()
+    while end_timer - start_timer < 3:
+        end_timer = timer()
+    p_left.rect.y = int(str(window)[str(window).find('x')+1:-8]) / 2.5
+    p_right.rect.y = int(str(window)[str(window).find('x')+1:-8]) / 2.5
+    ball.rect.x = int(str(window)[9:str(window).find('x')]) / 2.1
+    ball.rect.y = int(str(window)[str(window).find('x')+1:-8]) / 2.1
+    
 class GameSprite(sprite.Sprite):
     '''It is super class for all next classes'''
     def __init__(self, sprite_image, cor_x, cor_y, w, h, speed):
@@ -35,9 +55,16 @@ class GameSprite(sprite.Sprite):
 class PlayerLeft(GameSprite):
     def update(self):
         keys_pressed = key.get_pressed()
-        if keys_pressed[K_s] and self.rect.y < 620:
+        if keys_pressed[K_s] and self.rect.y < BOTTOM - (self.height - 50):
             self.rect.y += self.speed            
         if keys_pressed[K_w] and self.rect.y > 0:
+            self.rect.y -= self.speed
+class PlayerRight(GameSprite):
+    def update(self):
+        keys_pressed = key.get_pressed()
+        if keys_pressed[K_DOWN] and self.rect.y < BOTTOM - (self.height - 50):
+            self.rect.y += self.speed            
+        if keys_pressed[K_UP] and self.rect.y > 0:
             self.rect.y -= self.speed
 class Ball(sprite.Sprite):
     def __init__(self, picture, w, h, speed_x, speed_y): # We don't specify X and Y because the ball will always be in the center of the screen.
@@ -54,8 +81,12 @@ class Ball(sprite.Sprite):
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
         if self.rect.x <= LEFT:
+            player_right.counter += 1
+            return_to_start(player_left, player_right, self)
             self.speed_x *= -1
         if self.rect.x >= RIGHT:
+            player_left.counter += 1
+            return_to_start(player_left, player_right, self)
             self.speed_x *= -1
         if self.rect.y <= TOP:
             # if self.speed_y <= 0.2 and self.speed_y > 0:
@@ -64,22 +95,21 @@ class Ball(sprite.Sprite):
         if self.rect.y >= BOTTOM:
             self.speed_y *= -1
         if sprite.collide_rect(self, player_left):
-            if self.rect.bottom == player_left.rect.top: # if Ball bottom collide Player Top
+            print(player_left.rect.bottom, self.rect.top)
+            print(abs(self.rect.top - player_left.rect.bottom))
+            print(abs(self.rect.bottom - player_left.rect.top))
+            if abs(self.rect.bottom - player_left.rect.top) <= 10: # if Ball bottom collide Player Top
                 self.speed_y *= -1
-            if self.rect.top == player_left.rect.bottom: # if Ball top collide Player bottom
+            if abs(self.rect.top - player_left.rect.bottom) <= 10: # if Ball top collide Player bottom
                 self.speed_y *= -1
-            print(self.speed_y)
             # self.speed_y *= choice([0.5, 0.75, 2])
             self.speed_y = round(self.speed_y, 2)
             self.speed_x *= -1
         if sprite.collide_rect(self, player_right):
-            if self.rect.bottom == player_right.rect.top: # if Ball bottom collide Player Top
+            if abs(self.rect.bottom - player_left.rect.top) <= 20: # if Ball bottom collide Player Top
                 self.speed_y *= -1
-            if self.rect.top == player_right.rect.bottom: # if Ball top collide Player bottom
+            if abs(self.rect.top - player_left.rect.bottom) <= 20: # if Ball top collide Player bottom
                 self.speed_y *= -1
-            print(self.speed_y)
-            # self.speed_y *= choice([0.5, 0.75, 2])
-            self.speed_y = round(self.speed_y, 2)
             self.speed_x *= -1
 class Bot(GameSprite):
     def Think(self):
@@ -103,29 +133,72 @@ class Bot(GameSprite):
             except:
                 select_y = ball.rect.y
                 Y_select = select_y
-    def bot_move(self):
-        if self.rect.y < BOTTOM - (self.height - 50) and Y_select > self.rect.y:
-            self.rect.y += self.speed            
-        if self.rect.y > 0 and Y_select < self.rect.y:
-            self.rect.y -= self.speed
 
-player_left = PlayerLeft('bot.png', 50, 250, 180, 180, 7)
-ball = Ball('ball.png', 50, 50, 8, 8)
-player_right = Bot('bot.png', 760, 250, 180, 180, 7)
+    def bot_move(self):
+        random = choice([2,2,2,3])
+        if self.rect.y < BOTTOM - (self.height - 50) and Y_select > self.rect.bottom - 50*(random): # We make sure that the bot makes mistakes in calculations from time to time, and gives the player a chance
+            self.rect.y += self.speed            
+        if self.rect.y > 0 and Y_select < self.rect.top + 50*(random):
+            self.rect.y -= self.speed
+class Button(GameSprite):
+    def collidepoint(self, x, y):
+        return self.rect.collidepoint(x,y)
+# Create a buttons for menu
+player_player = Button('PLAYER_PLAYER.png', 250, 200, 400, 205, 0)
+player_bot = Button('PLAYER_BOT.png', 250, 450, 400, 205, 0)
+# Create values-flags
+menu = True
 procces = True
+
 clock = time.Clock()
+while menu:
+    window.blit(menu_fon, (0,0))
+    window.blit(base_font.render(f'Ping-Pong', True, (0, 0, 0)), (350, 100))
+    for e in event.get():
+        if e.type == QUIT:
+            menu = False
+            procces = False
+        if e.type == MOUSEBUTTONDOWN and e.button == 1:
+            x, y = e.pos
+            if player_player.collidepoint(x, y):
+                menu = False
+                player_right = PlayerRight('bot.png', 760, 250, 180, 180, 7)
+            if player_bot.collidepoint(x, y):
+                menu = False
+                player_right = Bot('ball.png', 760, 250, 180, 180, 7)
+            # Now create counters for points
+            try:
+                player_right.counter = 0
+            except NameError:
+                pass
+    player_player.reset()
+    player_bot.reset()
+    clock.tick(60)
+    display.update()
+
+player_left = PlayerLeft('bot.png', 0, 250, 180, 180, 7)
+player_left.counter = 0
+ball = Ball('ball.png', 50, 50, 5, 4)
 
 while procces:
+
     for e in event.get():
         if e.type == QUIT:
             procces = False
     window.blit(background, (0,0))
+    # Show counters for every player
+    window.blit(special_font.render(f'Player: {player_left.counter}', True, (0, 0, 0)), (20, 20))
+    window.blit(special_font.render(f'Player: {player_right.counter}', True, (0, 0, 0)), (790, 20))
+
     player_left.reset()
     player_left.update()
     ball.reset()
     ball.update()
-    player_right.Think()
-    player_right.bot_move()
+    try: # Trying to go if it's a bot
+        player_right.Think()
+        player_right.bot_move()
+    except AttributeError: # We move differently if the player
+        player_right.update()
     player_right.reset()
     clock.tick(60)
     display.update()
