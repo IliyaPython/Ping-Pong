@@ -7,7 +7,7 @@ font.init()
 # Now create bot point selection
 Y_select = None
 # Load music
-mixer.music.load('Flames of war.mp3')
+mixer.music.load('back_music.ogg')
 mixer.music.play(-1)
 new_round = mixer.Sound('new_round.ogg')
 start_game = mixer.Sound('start_game.ogg')
@@ -24,6 +24,7 @@ CENTERY = int(str(window)[str(window).find('x')+1:-8]) / 2.1
 # Create Base and Special font
 base_font = font.SysFont('Arial', 80)
 special_font = font.SysFont('Arial', 30)
+small_font = font.SysFont('Arial', 15)
 # Select background for menu and game
 menu_fon = transform.scale(image.load('background'+choice(['1','2','3'])+'.jpg'), (900, 700))
 background = transform.scale(image.load('background.jpg'), (900, 700))
@@ -95,9 +96,6 @@ class Ball(sprite.Sprite):
         if self.rect.y >= BOTTOM:
             self.speed_y *= -1
         if sprite.collide_rect(self, player_left):
-            print(player_left.rect.bottom, self.rect.top)
-            print(abs(self.rect.top - player_left.rect.bottom))
-            print(abs(self.rect.bottom - player_left.rect.top))
             if abs(self.rect.bottom - player_left.rect.top) <= 10: # if Ball bottom collide Player Top
                 self.speed_y *= -1
             if abs(self.rect.top - player_left.rect.bottom) <= 10: # if Ball top collide Player bottom
@@ -131,9 +129,8 @@ class Bot(GameSprite):
             except:
                 select_y = ball.rect.y
                 Y_select = select_y
-
     def bot_move(self):
-        random = choice([1,1,1,1,10])
+        random = choice([10,1,1,1,1,1,1,1,10,10]) # So, this can be explained this way: the chances of our bot being WRONG are 3/10 = 0.3 = 30 %
         if self.rect.y < BOTTOM - (self.height - 50) and Y_select > self.rect.centery *(random): # We make sure that the bot makes mistakes in calculations from time to time, and gives the player a chance
             self.rect.y += self.speed            
         if self.rect.y > 0 and Y_select < self.rect.centery *(random):
@@ -142,49 +139,57 @@ class Button(GameSprite):
     def collidepoint(self, x, y):
         return self.rect.collidepoint(x,y)
 # Create a buttons for menu
-player_player = Button('PLAYER_PLAYER.png', 250, 200, 400, 205, 0)
-player_bot = Button('PLAYER_BOT.png', 250, 450, 400, 205, 0)
+player_player = Button('PLAYER_PLAYER.png', 250, 140, 400, 205, 0)
+player_bot = Button('PLAYER_BOT.png', 250, 390, 400, 205, 0)
+license = GameSprite('CC_LICENSE.png', 20, 650, 40, 40, 0)
 # Create values-flags
 menu = True
 procces = True
 
 clock = time.Clock()
-while menu:
-    window.blit(menu_fon, (0,0))
-    window.blit(base_font.render(f'Ping-Pong', True, (0, 0, 0)), (300, 90))
-    for e in event.get():
-        if e.type == QUIT:
-            menu = False
-            procces = False
-        if e.type == MOUSEBUTTONDOWN and e.button == 1:
-            x, y = e.pos
-            if player_player.collidepoint(x, y):
-                menu = False
-                player_right = PlayerRight('player_right.png', 800, 250, 100, 180, 7)
-            if player_bot.collidepoint(x, y):
-                menu = False
-                player_right = Bot('player_right.png', 800, 250, 100, 180, 7)
-            # Now create counters for points and timer before the game
-            try:
-                player_right.counter = 0
-                # Same timer
-                start_timer = timer()
-                end_timer = timer()
-                start_game.play()
-                while end_timer - start_timer < 3:
-                    end_timer = timer()
-            except NameError:
-                pass
-    player_player.reset()
-    player_bot.reset()
-    clock.tick(60)
-    display.update()
-
 player_left = PlayerLeft('player_left.png', 0, 250, 100, 180, 7)
-player_left.counter = 0
-ball = Ball('ball.png', 50, 50, 5, 4)
-
+ball = Ball('ball.png', 50, 50, 6, 5) # For ball movement to work correctly, 
+                                        # do not make the speed arguments the same! Otherwise it will get stuck
 while procces:
+    # Procces menu, when human can choise type of game
+    while menu:
+        window.blit(menu_fon, (0,0))
+        window.blit(base_font.render(f'Ping-Pong', True, (0, 0, 0)), (300, 30))
+        for e in event.get():
+            if e.type == QUIT:
+                menu = False
+                procces = False
+            if e.type == MOUSEBUTTONDOWN and e.button == 1:
+                x, y = e.pos
+                if player_player.collidepoint(x, y):
+                    menu = False
+                    player_right = PlayerRight('player_right.png', 800, 250, 100, 180, 7)
+                    player_right_won = mixer.Sound('win_right.ogg')
+                    win_sound = mixer.Sound('left_win.ogg') # for the left player
+                if player_bot.collidepoint(x, y):
+                    menu = False
+                    player_right = Bot('player_right.png', 800, 250, 100, 180, 7)
+                    player_right_won = mixer.Sound('win_bot.ogg')
+                    win_sound = mixer.Sound('bot_angry.ogg') # for the left player
+                # Now create counters for points and timer before the game
+                try:
+                    player_right.counter = 0 # Reset counters
+                    player_left.counter = 0  # Reset counters
+                    # Same timer
+                    start_timer = timer()
+                    end_timer = timer()
+                    start_game.play()
+                    while end_timer - start_timer < 3:
+                        end_timer = timer()
+                except NameError:
+                    pass
+        license.reset()
+        player_player.reset()
+        player_bot.reset()
+        clock.tick(60)
+        display.update()
+    if procces == False:
+        break # This is so that after exiting the game will immediately stop
     for e in event.get():
         if e.type == QUIT:
             procces = False
@@ -202,22 +207,25 @@ while procces:
     except AttributeError: # We move differently if the player
         player_right.update()
     player_right.reset()
-    if player_left.counter >= 1:
+    if player_left.counter >= 6:
         start_timer = timer()
         end_timer = timer()
-        # win_sound.play()
-        window.blit(base_font.render(f'Player Left Win!', True, (255, 0, 0)), (100, CENTERY))
+        win_sound.play()
+        window.blit(base_font.render(f'Player Left Win!', True, (255, 0, 0)), (200, CENTERY))
+        display.update() # To display the text above
         while end_timer - start_timer < 3:
             end_timer = timer()
-    if player_right.counter >= 1:
+        menu = True # return to menu
+    if player_right.counter >= 6:
         start_timer = timer()
         end_timer = timer()
-        # lose_win.play()
-        window.blit(base_font.render(f'Player Right Win!', True, (0, 0, 255)), (100, CENTERY))
+        player_right_won.play()
+        window.blit(base_font.render(f'Player Right Win!', True, (0, 0, 255)), (200, CENTERY))
+        display.update() # To display the text above
         while end_timer - start_timer < 3:
             end_timer = timer()
+        menu = True # return to menu
     clock.tick(60)
     display.update()
-
 # Important comment - Sorry, but I am can't speak English :(
 # I know only some words in English and often use a translater.
