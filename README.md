@@ -1,4 +1,6 @@
 # Ping-Pong
+CC, Author: Iliya Gavrilov, 2024.
+
 This is ping pong game.
 
 This game contains interesting gameplay! It has a game mode with a bot.
